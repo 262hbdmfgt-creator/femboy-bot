@@ -429,10 +429,11 @@ async def golden_rain_command(message: Message) -> None:
 
     task = asyncio.create_task(
         _golden_rain_worker(
-            message.chat.id,
-            count,
-            interval,
-            legendary_positions,
+    message.bot,
+    message.chat.id,
+    count,
+    interval,
+    legendary_positions,
         )
     )
     _rain_tasks.add(task)
