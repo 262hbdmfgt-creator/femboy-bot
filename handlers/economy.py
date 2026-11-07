@@ -10,6 +10,8 @@ from aiogram.enums import ChatType
 from aiogram.filters import CommandObject
 from aiogram.types import (
     CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     LabeledPrice,
     Message,
     PreCheckoutQuery,
