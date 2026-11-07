@@ -440,6 +440,7 @@ async def golden_rain_command(message: Message) -> None:
 
 
 async def _golden_rain_worker(
+    bot,
     chat_id: int,
     count: int,
     interval: float,
