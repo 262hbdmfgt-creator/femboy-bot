@@ -80,8 +80,12 @@ def user_lock(user_id: int) -> asyncio.Lock:
     return _user_locks[user_id]
 
 
-async def card_keyboard() -> InlineKeyboardMarkup:
-    bot_info = await router.bot.get_me()
+async def card_keyboard(
+    bot,
+) -> InlineKeyboardMarkup:
+    bot_info = await bot.get_me()
+
+
 
     rows = [
         [
