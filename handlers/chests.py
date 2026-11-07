@@ -488,7 +488,7 @@ async def _golden_rain_worker(
 # в фоновой задаче приложения после регистрации роутеров.
 async def spawn_tumbleweed(chat_id: int) -> bool:
     try:
-        member_count = await router.bot.get_chat_member_count(chat_id)
+        member_count = await bot.get_chat_member_count(chat_id)
     except Exception:
         logger.warning(
             "Не подтверждён размер группы %s; перекати-поле не создаётся",
