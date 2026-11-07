@@ -531,7 +531,9 @@ async def fem_command(message: Message) -> None:
             )
             return
 
-        markup = await card_keyboard()
+        markup = await card_keyboard(message.bot)
+
+
 
         await message.answer_photo(
             photo=first["file_id"],
