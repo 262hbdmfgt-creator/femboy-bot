@@ -473,7 +473,7 @@ async def _golden_rain_worker(
                 payload,
                 lifetime=1800,
             )
-            await router.bot.send_message(
+            await bot.send_message(
                 chat_id,
                 chest_title(chest_type)
                 + f"\n📦 Сундук {index + 1}/{count}!\n"
