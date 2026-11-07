@@ -606,15 +606,21 @@ async def start_command(
 
     if argument.lower() == "shop":
         if message.chat.type != ChatType.PRIVATE:
+            bot_info = await message.bot.get_me()
+
             await message.answer(
-                "🏪 Магазин открывается только в ЛС!"
+                "🏪✨ Магазин открывается в личных сообщениях!",
+                reply_markup=bonus_keyboard(
+                    bot_info.username or "",
+                ),
             )
             return
 
-        await message.answer(
-            "🏪 Магазин будет открыт отдельным обработчиком."
-        )
+        from handlers.economy import show_shop
+
+        await show_shop(message)
         return
+
 
     if is_new and referrer_id:
         referrer = await referral_reward_for_new_user(
