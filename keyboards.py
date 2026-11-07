@@ -8,14 +8,6 @@ from aiogram.types import (
 )
 
 
-def inline(
-    *rows: list[InlineKeyboardButton],
-) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=list(rows)
-    )
-
-
 def bonus_keyboard(
     bot_username: str,
     extra_url: Optional[str] = None,
@@ -24,10 +16,7 @@ def bonus_keyboard(
         [
             InlineKeyboardButton(
                 text="🎁 Забрать бонус ✨",
-                url=(
-                    f"https://t.me/{bot_username}"
-                    "?start=bonus"
-                ),
+                url=f"https://t.me/{bot_username}?start=bonus",
             )
         ]
     ]
@@ -42,9 +31,7 @@ def bonus_keyboard(
             ]
         )
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=rows
-    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def subscription_keyboard(
@@ -68,6 +55,8 @@ def subscription_keyboard(
     )
 
 
+# economy.py ожидает shop:skip, shop:luck, shop:new_card,
+# shop:artifacts, shop:vip и shop:coins.
 def shop_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -93,7 +82,7 @@ def shop_keyboard() -> InlineKeyboardMarkup:
                     callback_data="shop:artifacts",
                 ),
                 InlineKeyboardButton(
-                    text="👑 VIP",
+                    text="👑 Купить VIP",
                     callback_data="shop:vip",
                 ),
             ],
@@ -250,6 +239,7 @@ def coins_stars_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+# common.py слушает profile_cards:<user_id>:<index>.
 def profile_keyboard(
     user_id: int,
 ) -> InlineKeyboardMarkup:
@@ -257,32 +247,24 @@ def profile_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎴 Мои карты",
-                    callback_data=(
-                        f"profile:cards:{user_id}:0"
-                    ),
+                    text="🎴 Мои карты 💖",
+                    callback_data=f"profile_cards:{user_id}:0",
                 )
             ],
             [
                 InlineKeyboardButton(
                     text="🗡 Мои клинки",
-                    callback_data=(
-                        f"profile:artifact:{user_id}:blade"
-                    ),
+                    callback_data=f"profile_artifacts:{user_id}:blade",
                 ),
                 InlineKeyboardButton(
                     text="🛡 Моя броня",
-                    callback_data=(
-                        f"profile:artifact:{user_id}:armor"
-                    ),
+                    callback_data=f"profile_artifacts:{user_id}:armor",
                 ),
             ],
             [
                 InlineKeyboardButton(
                     text="🔰 Мои щиты",
-                    callback_data=(
-                        f"profile:artifact:{user_id}:shield"
-                    ),
+                    callback_data=f"profile_artifacts:{user_id}:shield",
                 )
             ],
         ]
@@ -300,9 +282,7 @@ def card_navigation_keyboard(
         buttons.append(
             InlineKeyboardButton(
                 text="⬅️ Назад",
-                callback_data=(
-                    f"profile:cards:{user_id}:{index - 1}"
-                ),
+                callback_data=f"profile_cards:{user_id}:{index - 1}",
             )
         )
 
@@ -310,9 +290,7 @@ def card_navigation_keyboard(
         buttons.append(
             InlineKeyboardButton(
                 text="Вперёд ➡️",
-                callback_data=(
-                    f"profile:cards:{user_id}:{index + 1}"
-                ),
+                callback_data=f"profile_cards:{user_id}:{index + 1}",
             )
         )
 
@@ -321,6 +299,7 @@ def card_navigation_keyboard(
     )
 
 
+# artifacts.py использует craft:shield:<subtype>.
 def shield_craft_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -346,45 +325,14 @@ def shield_craft_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def quest_keyboard(
-    quest_ids: list[tuple[int, bool]],
-    all_ready: bool,
-) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-
-    for slot, ready in quest_ids:
-        if ready:
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=f"🎁 Забрать квест {slot}",
-                        callback_data=f"quest:claim:{slot}",
-                    )
-                ]
-            )
-
-    if all_ready:
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text="✨ Забрать всё",
-                    callback_data="quest:claim_all",
-                )
-            ]
-        )
-
-    return InlineKeyboardMarkup(
-        inline_keyboard=rows
-    )
-
-
+# clans.py использует clan:create, clan:create_cancel и clan:join:<number>.
 def clan_create_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="🏳️ Ввести название",
-                    callback_data="clan:create_confirm",
+                    callback_data="clan:create",
                 )
             ],
             [
@@ -405,9 +353,7 @@ def clan_join_keyboard(
             [
                 InlineKeyboardButton(
                     text="💖 Вступить в клан",
-                    callback_data=(
-                        f"clan:join:{clan_number}"
-                    ),
+                    callback_data=f"clan:join:{clan_number}",
                 )
             ]
         ]
@@ -473,9 +419,34 @@ def clan_shop_keyboard(
             ]
         )
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=rows
-    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def quest_keyboard(
+    ready_slots: list[int],
+    all_completed: bool,
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"🎁 Забрать квест {slot}",
+                callback_data=f"quest:claim:{slot}",
+            )
+        ]
+        for slot in ready_slots
+    ]
+
+    if all_completed:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="✨ Забрать всё",
+                    callback_data="quest:claim_all",
+                )
+            ]
+        )
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def top_keyboard() -> InlineKeyboardMarkup:
@@ -485,23 +456,6 @@ def top_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="📜 Топ-100 в ЛС",
                     callback_data="top:100",
-                )
-            ]
-        ]
-    )
-
-
-def admin_remove_keyboard(
-    admin_id: int,
-) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="❌ Снять администратора",
-                    callback_data=(
-                        f"admin:remove:{admin_id}"
-                    ),
                 )
             ]
         ]
