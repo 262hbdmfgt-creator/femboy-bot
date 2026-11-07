@@ -948,3 +948,377 @@ async def create_promo_command(
         f"⏳ Код действует: "
         f"<b>{lifetime_hours:g} ч.</b>"
     )
+
+# ============================================================
+# ДОПОЛНИТЕЛЬНЫЕ ОБРАБОТЧИКИ МАГАЗИНА
+# ============================================================
+
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+
+@router.callback_query(F.data == "shop:skip")
+async def shop_skip_callback(
+    callback: CallbackQuery,
+) -> None:
+    user_id = callback.from_user.id
+    current_time = now()
+
+    async with transaction() as db:
+        async with db.execute(
+            """
+            SELECT femcoins,
+                   cd_resets_count,
+                   cd_reset_expires
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ) as cursor:
+            user = await cursor.fetchone()
+
+        if not user or safe_int(user["femcoins"]) < 150:
+            await answer_callback(
+                callback,
+                "Недостаточно фемкоинов 🪙",
+                alert=True,
+            )
+            return
+
+        count = safe_int(user["cd_resets_count"])
+        expires = safe_float(user["cd_reset_expires"])
+
+        if expires <= current_time:
+            count = 0
+
+        changed = await db.execute(
+            """
+            UPDATE users
+            SET femcoins = femcoins - 150,
+                cd_resets_count = ?,
+                cd_reset_expires = ?
+            WHERE user_id = ?
+              AND femcoins >= 150
+            """,
+            (
+                count + 1,
+                current_time + 3 * 3600,
+                user_id,
+            ),
+        )
+
+        if changed.rowcount != 1:
+            await answer_callback(
+                callback,
+                "Баланс изменился, повтори покупку",
+                alert=True,
+            )
+            return
+
+    await answer_callback(
+        callback,
+        "⚡ Скип КД куплен!",
+        alert=True,
+    )
+
+
+@router.callback_query(F.data == "shop:luck")
+async def shop_luck_callback(
+    callback: CallbackQuery,
+) -> None:
+    user_id = callback.from_user.id
+    current_time = now()
+
+    async with transaction() as db:
+        async with db.execute(
+            """
+            SELECT femcoins,
+                   luck_expires
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ) as cursor:
+            user = await cursor.fetchone()
+
+        if not user or safe_int(user["femcoins"]) < 250:
+            await answer_callback(
+                callback,
+                "Недостаточно фемкоинов 🪙",
+                alert=True,
+            )
+            return
+
+        old_luck = safe_float(user["luck_expires"])
+        luck_start = max(current_time, old_luck)
+
+        changed = await db.execute(
+            """
+            UPDATE users
+            SET femcoins = femcoins - 250,
+                luck_expires = ?
+            WHERE user_id = ?
+              AND femcoins >= 250
+            """,
+            (
+                luck_start + 3 * 3600,
+                user_id,
+            ),
+        )
+
+        if changed.rowcount != 1:
+            await answer_callback(
+                callback,
+                "Баланс изменился, повтори покупку",
+                alert=True,
+            )
+            return
+
+    await answer_callback(
+        callback,
+        "🍀 Эликсир удачи активирован на 3 часа!",
+        alert=True,
+    )
+
+
+@router.callback_query(F.data == "shop:artifacts")
+async def shop_artifacts_callback(
+    callback: CallbackQuery,
+) -> None:
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔰 Слабый щит — 30 🪙",
+                    callback_data="artifact:weak_shield",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🛡 Броня — 300 🪙",
+                    callback_data="artifact:armor",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Назад",
+                    callback_data="shop:main",
+                )
+            ],
+        ]
+    )
+
+    await edit_message_safely(
+        callback.message,
+        "🛡✨ <b>МАГАЗИН АРТЕФАКТОВ</b> ✨🛡\n\n"
+        "🔰 Слабый щит можно купить за 30 🪙.\n"
+        "💎 Усиленный и фембойский щиты "
+        "получаются только крафтом.",
+        markup,
+    )
+
+    await answer_callback(callback)
+
+
+@router.callback_query(F.data == "artifact:weak_shield")
+async def buy_weak_shield_callback(
+    callback: CallbackQuery,
+) -> None:
+    user_id = callback.from_user.id
+
+    async with transaction() as db:
+        changed = await db.execute(
+            """
+            UPDATE users
+            SET femcoins = femcoins - 30
+            WHERE user_id = ?
+              AND femcoins >= 30
+            """,
+            (user_id,),
+        )
+
+        if changed.rowcount != 1:
+            await answer_callback(
+                callback,
+                "Недостаточно фемкоинов 🪙",
+                alert=True,
+            )
+            return
+
+        await db.execute(
+            """
+            INSERT INTO artifacts(
+                user_id,
+                artifact_type,
+                subtype,
+                amount,
+                created_at
+            )
+            VALUES (?, 'shield', 'weak', 1, ?)
+            ON CONFLICT(user_id, artifact_type, subtype)
+            DO UPDATE SET amount = amount + 1
+            """,
+            (
+                user_id,
+                now(),
+            ),
+        )
+
+    await answer_callback(
+        callback,
+        "🔰 Слабый щит куплен!",
+        alert=True,
+    )
+
+
+@router.callback_query(F.data == "artifact:armor")
+async def buy_armor_callback(
+    callback: CallbackQuery,
+) -> None:
+    user_id = callback.from_user.id
+
+    async with transaction() as db:
+        changed = await db.execute(
+            """
+            UPDATE users
+            SET femcoins = femcoins - 300
+            WHERE user_id = ?
+              AND femcoins >= 300
+            """,
+            (user_id,),
+        )
+
+        if changed.rowcount != 1:
+            await answer_callback(
+                callback,
+                "Недостаточно фемкоинов 🪙",
+                alert=True,
+            )
+            return
+
+        await db.execute(
+            """
+            INSERT INTO artifacts(
+                user_id,
+                artifact_type,
+                subtype,
+                amount,
+                created_at
+            )
+            VALUES (?, 'armor', '', 1, ?)
+            ON CONFLICT(user_id, artifact_type, subtype)
+            DO UPDATE SET amount = amount + 1
+            """,
+            (
+                user_id,
+                now(),
+            ),
+        )
+
+    await answer_callback(
+        callback,
+        "🛡 Броня куплена!",
+        alert=True,
+    )
+
+
+@router.callback_query(F.data == "shop:new_card")
+async def shop_new_card_callback(
+    callback: CallbackQuery,
+) -> None:
+    user_id = callback.from_user.id
+
+    async with transaction() as db:
+        async with db.execute(
+            """
+            SELECT femcoins
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ) as cursor:
+            user = await cursor.fetchone()
+
+        if not user or safe_int(user["femcoins"]) < 400:
+            await answer_callback(
+                callback,
+                "Недостаточно фемкоинов 🪙",
+                alert=True,
+            )
+            return
+
+        async with db.execute(
+            """
+            SELECT id,
+                   file_id,
+                   rarity,
+                   description
+            FROM cards
+            WHERE id NOT IN (
+                SELECT card_id
+                FROM inventory
+                WHERE user_id = ?
+            )
+            ORDER BY RANDOM()
+            LIMIT 1
+            """,
+            (user_id,),
+        ) as cursor:
+            card = await cursor.fetchone()
+
+        if not card:
+            await answer_callback(
+                callback,
+                "Все карты уже собраны 🎴",
+                alert=True,
+            )
+            return
+
+        changed = await db.execute(
+            """
+            UPDATE users
+            SET femcoins = femcoins - 400
+            WHERE user_id = ?
+              AND femcoins >= 400
+            """,
+            (user_id,),
+        )
+
+        if changed.rowcount != 1:
+            await answer_callback(
+                callback,
+                "Баланс изменился, повтори покупку",
+                alert=True,
+            )
+            return
+
+        await db.execute(
+            """
+            INSERT INTO inventory(
+                user_id,
+                card_id,
+                count
+            )
+            VALUES (?, ?, 1)
+            ON CONFLICT(user_id, card_id)
+            DO UPDATE SET count = count + 1
+            """,
+            (
+                user_id,
+                safe_int(card["id"]),
+            ),
+        )
+
+    await callback.message.answer_photo(
+        photo=card["file_id"],
+        caption=(
+            "🎁✨ <b>НОВАЯ КАРТА КУПЛЕНА!</b> ✨🎁\n\n"
+            f"🎴 Номер: <b>#{safe_int(card['id'])}</b>\n"
+            f"🏷 Редкость: <b>{esc(card['rarity'])}</b>\n"
+            f"📝 {esc(card['description']) or 'Без описания'}"
+        ),
+    )
+
+    await answer_callback(
+        callback,
+        "Карта куплена! 🎴",
+    )
