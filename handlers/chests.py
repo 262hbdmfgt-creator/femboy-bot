@@ -486,7 +486,7 @@ async def _golden_rain_worker(
 
 # Обработчики активности и перекати-поля будут подключены
 # в фоновой задаче приложения после регистрации роутеров.
-async def spawn_tumbleweed(chat_id: int) -> bool:
+async def spawn_tumbleweed(bot, chat_id: int) -> bool:
     try:
         member_count = await bot.get_chat_member_count(chat_id)
     except Exception:
