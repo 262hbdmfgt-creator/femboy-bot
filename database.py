@@ -16,13 +16,13 @@ def now() -> float:
 
 @asynccontextmanager
 async def connect():
-    db = await aiosqlite.connect(DATABASE_PATH)
+    db = await aiosqlite.connect(DATABASE_PATH, timeout=30.0)
     db.row_factory = aiosqlite.Row
 
     await db.execute("PRAGMA journal_mode=WAL")
     await db.execute("PRAGMA synchronous=NORMAL")
     await db.execute("PRAGMA foreign_keys=ON")
-    await db.execute("PRAGMA busy_timeout=15000")
+    await db.execute("PRAGMA busy_timeout=30000")
 
     try:
         yield db
@@ -33,14 +33,14 @@ async def connect():
 @asynccontextmanager
 async def transaction():
     async with connect() as db:
-        await db.execute("BEGIN IMMEDIATE")
         try:
             yield db
+            await db.commit()
         except Exception:
             await db.rollback()
             raise
-        else:
-            await db.commit()
+
+
 
 
 async def _columns(db: aiosqlite.Connection, table: str) -> set[str]:
