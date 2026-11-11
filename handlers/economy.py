@@ -921,11 +921,13 @@ async def create_promo_command(
         )
         return
 
-    if reward_type not in {"f", "k", "v"}:
+    if reward_type not in {"f", "k", "v", "d"}:
         await message.answer(
-            "❌ Тип награды должен быть f, k или v."
+            "❌ Тип награды должен быть f, k, v или d."
         )
         return
+
+
 
     try:
         reward_value = int(parts[3])
