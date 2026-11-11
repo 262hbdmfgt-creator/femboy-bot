@@ -666,21 +666,43 @@ async def bonus_check_callback(
     user_id = callback.from_user.id
     current_time = now()
 
+    channel = CHANNEL_USERNAME.strip()
+    if not channel.startswith("@") and not channel.startswith("-100"):
+        channel = f"@{channel}"
+
     try:
         member = await callback.bot.get_chat_member(
-            chat_id=CHANNEL_USERNAME,
+            chat_id=channel,
             user_id=user_id,
         )
-    except Exception:
-        logger.exception(
-            "Ошибка проверки подписки"
-        )
+        logger.info("Подписка проверена: user=%s, channel=%s, status=%s", user_id, channel, member.status)
+    except Exception as e:
+        logger.error("Ошибка проверки подписки: user=%s, channel=%s, err=%s", user_id, channel, e)
         await answer_callback(
             callback,
-            "Не удалось проверить подписку 😿",
+            f"Не удалось проверить подписку на {channel}. Убедитесь, что бот добавлен в канал!",
             alert=True,
         )
         return
+
+    # В aiogram 3 статус member.status может быть объектом Enum (ChatMemberStatus),
+    # поэтому приводим к строке и берем значение .value
+    status_str = str(getattr(member.status, "value", member.status)).lower()
+
+    if status_str not in {
+        "creator",
+        "administrator",
+        "member",
+        "restricted",
+    }:
+        await answer_callback(
+            callback,
+            "Сначала подпишись на канал 💖",
+            alert=True,
+        )
+        return
+
+
 
     if str(member.status) not in {
         "creator",
