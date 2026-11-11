@@ -1341,3 +1341,55 @@ async def broadcast_collect(
     await message.answer(
         "✅ Сообщение добавлено в рассылку."
     )
+
+# --- Новые команды управления прогрессом ---
+
+@router.message(lambda m: m.text and m.text.startswith("/бот") and any(x in m.text for x in ["опыт", "уровень", "ступень", "лига", "дейлик"]))
+async def superadmin_progress_manage(message: Message):
+    if message.from_user.id != SUPER_ADMIN_ID:
+        return
+
+    parts = message.text.split()
+    # Формат: /бот +-опыт 100 @user
+    if len(parts) < 3: return
+
+    cmd = parts[1].lower()
+    try:
+        val = int(re.sub(r"[^\d-]", "", parts[2]))
+    except: return
+
+    target_id = await resolve_user_id(message)
+    if not target_id:
+        await message.answer("❌ Пользователь не найден")
+        return
+
+    async with transaction() as db:
+        if "опыт" in cmd:
+            op = "+" if "+" in cmd else "-"
+            await db.execute(f"UPDATE users SET experience = MAX(0, experience {op} ?) WHERE user_id = ?", (val, target_id))
+            msg = f"✨ Опыт изменен на {val}"
+        
+        elif "уровень" in cmd:
+            op = "+" if "+" in cmd else "-"
+            await db.execute(f"UPDATE users SET level = MAX(1, level {op} ?) WHERE user_id = ?", (val, target_id))
+            msg = f"📈 Уровень изменен на {val}"
+
+        elif "ступень" in cmd:
+            # 1 ступень = 10 уровней (упрощенно для прыжка)
+            op = "+" if "+" in cmd else "-"
+            await db.execute(f"UPDATE users SET level = MAX(1, level {op} ?) WHERE user_id = ?", (val * 10, target_id))
+            msg = f"📊 Ступени изменены на {val} (через уровни)"
+
+        elif "лига" in cmd:
+            # 1 лига = 30 уровней
+            op = "+" if "+" in cmd else "-"
+            await db.execute(f"UPDATE users SET level = MAX(1, level {op} ?) WHERE user_id = ?", (val * 30, target_id))
+            msg = f"🏆 Лиги изменены на {val} (через уровни)"
+
+        elif "дейлик" in cmd:
+            await db.execute("UPDATE users SET daily_streak = ? WHERE user_id = ?", (val, target_id))
+            msg = f"📅 Серия дейлика установлена на {val}"
+
+    await message.answer(f"✅ {msg} для ID {target_id}")
+
+
