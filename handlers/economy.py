@@ -821,6 +821,30 @@ async def activate_promo_handler(
             reward_text = (
                 f"👑 VIP на {reward_value} ч."
             )
+elif reward_type == "d":
+            async with db.execute(
+                """
+                SELECT daily_streak
+                FROM users
+                WHERE user_id = ?
+                """,
+                (user_id,),
+            ) as cursor:
+                user = await cursor.fetchone()
+
+            current_streak = safe_int(user["daily_streak"]) if user else 0
+            new_streak = current_streak + reward_value
+
+            await db.execute(
+                """
+                UPDATE users
+                SET daily_streak = ?
+                WHERE user_id = ?
+                """,
+                (new_streak, user_id),
+            )
+            reward_text = f"📅 +{reward_value} к серии дейлика (итого: {new_streak})"
+
 
         else:
             await state.clear()
